@@ -42,6 +42,7 @@ function Reveal({ children, delay = 0, y = 40, className = "" }) {
   );
 }
 
+
 /* ===== PRELOADER — landing intro ===== */
 function Preloader({ onDone }) {
   const { t } = useLang();
@@ -496,24 +497,31 @@ function Hero({ onJoin }) {
 }
 
 /* ===== WAVE DIVIDER ===== */
-function WaveDivider({ flip }) {
+function WaveDivider({ flip = false }) {
   return (
     <div
-      style={{
-        lineHeight: 0,
-        transform: flip ? "scaleY(-1)" : "none",
-        position: "relative",
-        zIndex: 1,
-        marginBottom: -2,
-      }}
+      className={`wave-divider ${flip ? "flip" : ""}`}
+      aria-hidden="true"
     >
       <svg
         viewBox="0 0 1440 110"
         preserveAspectRatio="none"
-        style={{ width: "100%", height: 80, display: "block" }}
+        style={{ width: "100%", height: "100%", display: "block" }}
       >
         <motion.path
-          fill="var(--bg-2)"
+          fill="var(--wave-fill)"
+          opacity="0.55"
+          animate={{
+            d: [
+              "M0,60 C240,20 480,95 720,55 C960,15 1200,80 1440,45 L1440,110 L0,110 Z",
+              "M0,50 C240,90 480,15 720,55 C960,95 1200,25 1440,60 L1440,110 L0,110 Z",
+              "M0,60 C240,20 480,95 720,55 C960,15 1200,80 1440,45 L1440,110 L0,110 Z",
+            ],
+          }}
+          transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.path
+          fill="var(--wave-fill)"
           animate={{
             d: [
               "M0,50 C240,100 480,10 720,50 C960,90 1200,20 1440,55 L1440,110 L0,110 Z",
@@ -532,7 +540,8 @@ function WaveDivider({ flip }) {
 function About() {
   const { t } = useLang();
   return (
-    <section className="section" id="about" style={{ background: "var(--bg-2)" }}>
+    <section className="section" id="about">
+      <WaveDivider />
       <div className="container">
         <div className="about-grid">
           <Reveal>
@@ -712,6 +721,7 @@ function Services() {
 
   return (
     <section className="section noise" id="services">
+      <WaveDivider flip />
       <motion.div
         className="wave-glow"
         style={{
@@ -991,7 +1001,8 @@ function Work() {
   const next = () => setOpenIdx((i) => (i + 1) % filtered.length);
 
   return (
-    <section className="section" id="work" style={{ background: "var(--bg-2)" }}>
+    <section className="section" id="work">
+      <WaveDivider flip />
       <div className="container">
         <Reveal>
           <span className="kicker">{t.work.kicker}</span>
@@ -1121,6 +1132,7 @@ function Team() {
 
   return (
     <section className="section noise team-section" id="team">
+      <WaveDivider />
       <div className="container">
         <Reveal>
           <div style={{ textAlign: "center" }}>
@@ -1324,7 +1336,8 @@ function JoinForm({ category, onClose }) {
 function Join({ openCategory, setOpenCategory }) {
   const { t, lang } = useLang();
   return (
-    <section className="section" id="join" style={{ background: "var(--bg-2)" }}>
+    <section className="section" id="join">
+      <WaveDivider />
       <div className="container">
         <Reveal>
           <div style={{ textAlign: "center" }}>
@@ -1392,6 +1405,7 @@ function Contact() {
   const { t } = useLang();
   return (
     <section className="section noise" id="contact">
+      <WaveDivider flip />
       <div className="container">
         <div className="contact-wrap">
           <Reveal>
@@ -1621,7 +1635,6 @@ export default function App() {
           >
             <Navbar onJoin={scrollToJoin} />
             <Hero onJoin={scrollToJoin} />
-            <WaveDivider />
             <About />
             <Services />
             <Work />
