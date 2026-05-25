@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import siteData from "./data.json";
+import {
+  fetchTeam,
+  fetchWork,
+  saveTeam,
+  saveWork,
+  uploadImage,
+  isSupabaseConfigured,
+} from "./supabase";
 import "./admin.css";
 
 /* ============================================================
@@ -33,6 +40,7 @@ const emptyWork = () => ({
   cat: { fr: "", en: "", ar: "" },
   hue: 268,
   image: "",
+  video_url: "",
 });
 
 /* read an image file as a compressed data URL */
@@ -87,7 +95,9 @@ function ImagePicker({ value, onChange, label, round }) {
     if (!file) return;
     setBusy(true);
     try {
-      const url = await fileToDataURL(file, round ? 700 : 1000);
+      // compress locally, then upload to Supabase Storage (or keep data URL)
+      const dataUrl = await fileToDataURL(file, round ? 700 : 1000);
+      const url = await uploadImage(file, dataUrl);
       onChange(url);
     } catch {
       alert("Impossible de lire cette image.");
@@ -128,6 +138,91 @@ function ImagePicker({ value, onChange, label, round }) {
             type="file"
             accept="image/*"
             onChange={pick}
+            hidden
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Video picker: upload a file OR paste a link ---- */
+function VideoPicker({ value, onChange, label }) {
+  const inputRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+
+  const isUploaded = value && value.startsWith("http") &&
+    /\.(mp4|webm|mov|m4v)(\?|$)/i.test(value);
+
+  const pickFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // guard against very large files (Supabase free tier / slow uploads)
+    if (file.size > 50 * 1024 * 1024) {
+      alert(
+        "Vidéo trop lourde (max 50 Mo). Compressez-la, ou collez plutôt un lien YouTube / Vimeo."
+      );
+      e.target.value = "";
+      return;
+    }
+    setBusy(true);
+    try {
+      const url = await uploadImage(file, ""); // uploads any file type
+      if (!url) throw new Error("upload");
+      onChange(url);
+    } catch {
+      alert("Échec du téléversement de la vidéo.");
+    }
+    setBusy(false);
+    e.target.value = "";
+  };
+
+  return (
+    <div className="af-field">
+      <span className="af-label">{label}</span>
+      <div className="af-video">
+        <input
+          type="url"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://youtube.com/...  ou  https://vimeo.com/..."
+        />
+        <div className="af-video-actions">
+          <span className="af-hint">
+            Collez un lien YouTube / Vimeo ci-dessus, ou téléversez un
+            fichier vidéo :
+          </span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="ab ab-soft"
+              onClick={() => inputRef.current?.click()}
+            >
+              {busy ? "Téléversement..." : "Téléverser une vidéo"}
+            </button>
+            {value && (
+              <button
+                type="button"
+                className="ab ab-ghost"
+                onClick={() => onChange("")}
+              >
+                Retirer
+              </button>
+            )}
+          </div>
+          {isUploaded && (
+            <video
+              src={value}
+              className="af-video-preview"
+              controls
+              preload="metadata"
+            />
+          )}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="video/*"
+            onChange={pickFile}
             hidden
           />
         </div>
@@ -277,10 +372,22 @@ function WorkEditor({ item, onChange, onDelete }) {
       </div>
 
       <ImagePicker
-        label="Image de la réalisation (optionnel)"
+        label={
+          item.type === "video"
+            ? "Image de couverture (miniature de la vidéo)"
+            : "Image de la réalisation (optionnel)"
+        }
         value={item.image}
         onChange={(v) => set({ image: v })}
       />
+
+      {item.type === "video" && (
+        <VideoPicker
+          label="Vidéo de la réalisation"
+          value={item.video_url}
+          onChange={(v) => set({ video_url: v })}
+        />
+      )}
     </div>
   );
 }
@@ -290,20 +397,30 @@ function WorkEditor({ item, onChange, onDelete }) {
    ============================================================ */
 export default function Admin() {
   const [tab, setTab] = useState("team");
-  const [team, setTeam] = useState(() =>
-    structuredClone(siteData.teamMembers)
-  );
-  const [work, setWork] = useState(() =>
-    structuredClone(siteData.workItems)
-  );
+  const [team, setTeam] = useState([]);
+  const [work, setWork] = useState([]);
   const [dirty, setDirty] = useState(false);
-  const importRef = useRef(null);
+  const [loadingData, setLoadingData] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", "dark");
     document.documentElement.dir = "ltr";
     document.title = "El Mouja — Gestion du contenu";
+    Promise.all([fetchTeam(), fetchWork()])
+      .then(([tm, wk]) => {
+        setTeam(tm);
+        setWork(wk);
+      })
+      .catch(() => setToast("Erreur de chargement des données"))
+      .finally(() => setLoadingData(false));
   }, []);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3500);
+  };
 
   const markDirty = () => setDirty(true);
 
@@ -357,38 +474,22 @@ export default function Admin() {
     markDirty();
   };
 
-  /* download data.json */
-  const download = () => {
-    const data = { teamMembers: team, workItems: work };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "data.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    setDirty(false);
-  };
-
-  /* import an existing data.json to keep editing */
-  const importJSON = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      if (!parsed.teamMembers || !parsed.workItems)
-        throw new Error("format");
-      setTeam(parsed.teamMembers);
-      setWork(parsed.workItems);
-      setDirty(false);
-      alert("Fichier importé. Vous pouvez continuer l'édition.");
-    } catch {
-      alert("Fichier invalide — ce n'est pas un data.json valide.");
+  /* publish — save everything to Supabase */
+  const publish = async () => {
+    if (!isSupabaseConfigured) {
+      showToast("Supabase non configuré — voir le fichier .env");
+      return;
     }
-    e.target.value = "";
+    setSaving(true);
+    try {
+      await saveTeam(team);
+      await saveWork(work);
+      setDirty(false);
+      showToast("✓ Publié — le site est à jour");
+    } catch (e) {
+      showToast("Erreur : " + (e.message || "échec de la sauvegarde"));
+    }
+    setSaving(false);
   };
 
   return (
@@ -403,21 +504,17 @@ export default function Admin() {
             </div>
           </div>
           <div className="admin-head-actions">
+            <a className="ab ab-ghost" href="/" target="_blank" rel="noreferrer">
+              Voir le site
+            </a>
             <button
-              className="ab ab-ghost"
-              onClick={() => importRef.current?.click()}
+              className="ab ab-primary"
+              onClick={publish}
+              disabled={saving || loadingData}
             >
-              Importer data.json
-            </button>
-            <input
-              ref={importRef}
-              type="file"
-              accept="application/json,.json"
-              hidden
-              onChange={importJSON}
-            />
-            <button className="ab ab-primary" onClick={download}>
-              {dirty ? "● " : ""}Télécharger data.json
+              {saving
+                ? "Publication..."
+                : (dirty ? "● " : "") + "Publier les changements"}
             </button>
           </div>
         </div>
@@ -426,10 +523,10 @@ export default function Admin() {
       <div className="admin-body">
         <div className="admin-note">
           <strong>Comment ça marche :</strong> ajoutez ou modifiez les
-          membres et réalisations ci-dessous, cliquez sur{" "}
-          <em>Télécharger data.json</em>, puis remplacez le fichier{" "}
-          <code>src/data.json</code> du projet par celui téléchargé et
-          republiez le site. Le contenu apparaîtra automatiquement.
+          membres et réalisations ci-dessous, puis cliquez sur{" "}
+          <em>Publier les changements</em>. Le contenu est enregistré sur
+          la base de données et apparaît immédiatement sur le site —
+          aucune reconstruction nécessaire.
         </div>
 
         <div className="admin-tabs">
@@ -520,11 +617,14 @@ export default function Admin() {
         <footer className="admin-foot">
           <a href="/">← Retour au site</a>
           <span>
-            N'oubliez pas de télécharger <code>data.json</code> avant de
-            quitter.
+            {isSupabaseConfigured
+              ? "Les changements sont publiés directement sur Supabase."
+              : "⚠ Supabase non configuré — créez un fichier .env (voir .env.example)."}
           </span>
         </footer>
       </div>
+
+      {toast && <div className="admin-toast">{toast}</div>}
     </div>
   );
 }

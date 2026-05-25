@@ -1,17 +1,20 @@
 /* ============================================================
    الموجة — El Mouja Agency — Global Styles
-   Oceanic / violet wave aesthetic — Dark + Light themes
+   Ocean / sea-wave aesthetic — Dark + Light themes
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Tajawal:wght@400;500;700;800;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap');
 
-/* ---- Shared (theme-independent) tokens ---- */
+/* ---- Shared (theme-independent) tokens ----
+   Ocean / sea-wave palette — bright, vivid blue.
+   NOTE: the --violet* names are kept for backwards compatibility,
+   but they now hold sea-blue values. */
 :root {
-  --violet:      #8d6fc4;
-  --violet-2:    #a487d8;
-  --violet-deep: #6d5797;
-  --lilac:       #c4a5e4;
-  --foam:        #e7d4f3;
+  --violet:      #4f9fc9;
+  --violet-2:    #5fb3da;
+  --violet-deep: #3d7ea3;
+  --lilac:       #aadcf0;
+  --foam:        #e0f2fa;
 
   --font-display: 'Sora', sans-serif;
   --font-body:    'Sora', sans-serif;
@@ -24,64 +27,64 @@
   color-scheme: dark;
 }
 
-/* ---- DARK theme (lighter than before — deep slate-violet) ---- */
+/* ---- DARK theme — bright, vivid ocean blue ---- */
 [data-theme="dark"] {
-  --bg:          #1a1726;
-  --bg-2:        #211d31;
-  --surface:     #2a2540;
-  --surface-2:   #332c4d;
-  --line:        #423a5e;
+  --bg:          #16344a;
+  --bg-2:        #1b3e58;
+  --surface:     #234c69;
+  --surface-2:   #2c597a;
+  --line:        #3d6e92;
 
-  --violet:      #b499dd;
-  --violet-2:    #c9a7e9;
-  --violet-deep: #8771b4;
-  --lilac:       #e0bcf1;
+  --violet:      #7cc7e8;
+  --violet-2:    #9ad8f2;
+  --violet-deep: #5aa9d4;
+  --lilac:       #b6e0f3;
 
-  --text:        #ece6f5;
-  --text-dim:    #b3aac8;
-  --text-faint:  #837a9c;
+  --text:        #eef6fb;
+  --text-dim:    #b9d2e1;
+  --text-faint:  #87a8bd;
 
-  --accent:      #c9a7e9;
-  --glow:        rgba(180, 153, 221, 0.40);
-  --shadow:      rgba(0, 0, 0, 0.45);
-  --on-accent:   #ffffff;
+  --accent:      #9ad8f2;
+  --glow:        rgba(122, 199, 232, 0.50);
+  --shadow:      rgba(8, 28, 44, 0.45);
+  --on-accent:   #0d2435;
 
-  --grid-line:   rgba(255,255,255,0.05);
-  --glass-bg:    linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
-  --card-shimmer-light: rgba(255,255,255,0.14);
-  --overlay-strong: rgba(20, 17, 32, 0.94);
-  --overlay-soft:   rgba(20, 17, 32, 0.25);
+  --grid-line:   rgba(255,255,255,0.06);
+  --glass-bg:    linear-gradient(160deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+  --card-shimmer-light: rgba(255,255,255,0.20);
+  --overlay-strong: rgba(15, 40, 58, 0.92);
+  --overlay-soft:   rgba(15, 40, 58, 0.22);
 
   color-scheme: dark;
 }
 
-/* ---- LIGHT theme ---- */
+/* ---- LIGHT theme — sea foam daylight ---- */
 [data-theme="light"] {
-  --bg:          #f6f3fb;
-  --bg-2:        #efeaf7;
+  --bg:          #eef4f7;
+  --bg-2:        #e3edf2;
   --surface:     #ffffff;
-  --surface-2:   #f3eefb;
-  --line:        #e2dbf0;
+  --surface-2:   #eaf2f6;
+  --line:        #d3e0e7;
 
-  --violet:      #6d5797;
-  --violet-2:    #8266b0;
-  --violet-deep: #5a4680;
-  --lilac:       #9b7fc7;
+  --violet:      #3d5e79;
+  --violet-2:    #4c6c80;
+  --violet-deep: #244459;
+  --lilac:       #6f93a8;
 
-  --text:        #241d38;
-  --text-dim:    #5f5878;
-  --text-faint:  #918aa6;
+  --text:        #16242e;
+  --text-dim:    #4a5e6b;
+  --text-faint:  #7e919c;
 
-  --accent:      #6d5797;
-  --glow:        rgba(109, 87, 151, 0.30);
-  --shadow:      rgba(80, 60, 120, 0.18);
+  --accent:      #3d5e79;
+  --glow:        rgba(61, 94, 121, 0.28);
+  --shadow:      rgba(36, 68, 89, 0.20);
   --on-accent:   #ffffff;
 
-  --grid-line:   rgba(80,60,120,0.08);
-  --glass-bg:    linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
-  --card-shimmer-light: rgba(255,255,255,0.5);
-  --overlay-strong: rgba(36, 29, 56, 0.88);
-  --overlay-soft:   rgba(36, 29, 56, 0.15);
+  --grid-line:   rgba(36,68,89,0.08);
+  --glass-bg:    linear-gradient(160deg, rgba(255,255,255,0.88), rgba(255,255,255,0.6));
+  --card-shimmer-light: rgba(255,255,255,0.55);
+  --overlay-strong: rgba(16, 32, 42, 0.88);
+  --overlay-soft:   rgba(16, 32, 42, 0.15);
 
   color-scheme: light;
 }
@@ -103,7 +106,20 @@ body {
   overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background 0.45s var(--ease), color 0.45s var(--ease);
+}
+
+/* Smooth fade when switching light/dark — the .theme-anim class is
+   added to <html> only during the toggle, so normal hovers stay snappy. */
+.theme-anim,
+.theme-anim *,
+.theme-anim *::before,
+.theme-anim *::after {
+  transition: background-color 0.55s var(--ease),
+              background-image 0.55s var(--ease),
+              color 0.55s var(--ease),
+              border-color 0.55s var(--ease),
+              fill 0.55s var(--ease),
+              box-shadow 0.55s var(--ease) !important;
 }
 
 ::selection { background: var(--violet); color: var(--on-accent); }

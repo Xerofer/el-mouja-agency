@@ -1,82 +1,87 @@
 # الموجة — El Mouja Agency
 
-Site web vitrine (portfolio) pour **El Mouja**, agence de communication, publicite et marketing.
-Construit avec **React + Vite** et animations **Framer Motion**.
+Site web vitrine (portfolio) pour **El Mouja**, agence de communication,
+publicite et marketing. Construit avec **React + Vite**, animations
+**Framer Motion**, et base de donnees **Supabase**.
 
 ## Fonctionnalites
 
-- Page d'accueil avec animation d'entree (prechargeur avec vague animee)
+- Page d'accueil avec animation d'entree
 - Sections : Accueil / A propos / Services / Realisations / Equipe / Rejoignez-nous / Contact
-- Mode clair et mode sombre (bouton dans la barre de navigation)
-- Grille de realisations filtrable (videos / images)
+- Mode clair et mode sombre
+- Galerie de realisations en mosaique (masonry) avec visionneuse (lightbox)
 - Showroom equipe : defilement horizontal automatique
-- Formulaires "Rejoignez-nous" : Createur de contenu & Entreprise / Marque
 - Selecteur de langue Arabe (RTL) / Anglais / Francais
-- **Page d'administration pour gerer l'equipe et les realisations**
-- Entierement responsive
+- Palette de couleurs oceanique (inspiree du logo)
+- **Page d'administration connectee a Supabase** pour gerer equipe & realisations
 
-## Demarrer
+## 1. Demarrer
 
 ```bash
 npm install
 npm run dev
 ```
 
-Le site s'ouvre sur http://localhost:5173
+Le site : http://localhost:5173 — l'admin : http://localhost:5173/admin
 
-## Build de production
+## 2. Configurer Supabase (important)
+
+Le site charge l'equipe et les realisations depuis Supabase. Sans
+configuration, il utilise les donnees d'exemple de `src/data.json`.
+
+### Etape A — creer la base de donnees
+
+1. Creez un projet sur https://supabase.com
+2. Dans le projet : **SQL Editor** -> **New query**
+3. Copiez tout le contenu du fichier **`supabase-schema.sql`** et executez-le.
+   Cela cree les tables, les regles de securite, le bucket d'images et
+   les donnees d'exemple.
+
+### Etape B — connecter le site
+
+1. Dans Supabase : **Settings -> API**, copiez **Project URL** et la cle
+   **anon public**.
+2. A la racine du projet, copiez `.env.example` vers `.env` :
+   ```
+   VITE_SUPABASE_URL=https://votre-projet.supabase.co
+   VITE_SUPABASE_ANON_KEY=votre-cle-anon
+   ```
+3. Relancez `npm run dev`. Le site lit maintenant depuis Supabase.
+
+> Le fichier `.env` n'est PAS envoye sur Git (voir `.gitignore`).
+> Sur Vercel/Netlify, ajoutez ces 2 variables dans les reglages du projet
+> (Environment Variables).
+
+## 3. Gerer le contenu — page /admin
+
+Ouvrez **`/admin`** (URL non listee sur le site).
+
+- Onglet **Equipe** / **Realisations** : ajouter, modifier, reordonner,
+  supprimer. Les images sont televersees vers Supabase Storage.
+- Cliquez sur **Publier les changements** : tout est enregistre sur
+  Supabase et apparait **immediatement** sur le site, sans reconstruction.
+
+## 4. Build de production
 
 ```bash
-npm run build      # genere le dossier dist/
-npm run preview    # previsualise le build
+npm run build      # genere dist/
+npm run preview    # previsualise
 ```
-
-## ⚙️ Page d'administration — ajouter equipe & realisations
-
-Une page de gestion du contenu est disponible a l'adresse **`/admin`**
-(par exemple http://localhost:5173/admin ou https://votre-site.com/admin).
-
-### Comment ajouter un membre ou une realisation
-
-1. Ouvrez **`/admin`** dans le navigateur.
-2. Onglet **Equipe** ou **Realisations** : cliquez sur "+ Ajouter",
-   remplissez les champs (nom, poste dans les 3 langues, photo, etc.).
-   Vous pouvez aussi reordonner (fleches) ou supprimer des elements.
-3. Cliquez sur **"Telecharger data.json"** en haut a droite.
-4. Remplacez le fichier **`src/data.json`** du projet par celui telecharge.
-5. Reconstruisez / republiez le site (`npm run build`, ou re-deploiement).
-   Le nouveau contenu apparait automatiquement sur le site.
-
-> Astuce : avant de modifier, vous pouvez cliquer sur **"Importer data.json"**
-> pour recharger le fichier `data.json` actuel et continuer l'edition.
-
-Les photos ajoutees via l'admin sont integrees directement dans le fichier
-`data.json` (encodees), donc aucun fichier image separe a gerer.
 
 ## Personnalisation du code
 
-- **Contenu equipe & realisations** : gere via `/admin` -> `src/data.json`
-- **Textes du site** (sections, menus...) : `src/i18n.js` -> objet `translations`
-- **Telephone & reseaux sociaux** : `src/i18n.js` -> objet `agencyContact`
-  (valeurs d'exemple a remplacer)
-- **Theme par defaut** : `useState("dark")` dans `App` (src/App.jsx)
-- Le logo se trouve dans `public/logo.png` et `public/logo.svg`
+- **Equipe & realisations** : geres via `/admin` (Supabase)
+- **Textes du site** : `src/i18n.js` -> objet `translations`
+- **Telephone & reseaux sociaux** : `src/i18n.js` -> `agencyContact`
+- **Couleurs** : `src/index.css` (variables `--bg`, `--violet`, etc.)
+- **Logo** : `public/logo.png` et `public/logo.svg`
 
 ## Deploiement
 
-Le site utilise une route `/admin`. Pour qu'elle fonctionne en production,
-l'hebergeur doit renvoyer `index.html` pour les routes inconnues (SPA fallback).
-Les fichiers de configuration sont deja inclus :
-
-- **Netlify** : `public/_redirects`
-- **Vercel** : `vercel.json`
-
-Pour un autre hebergeur, configurez la redirection de toutes les routes
-vers `index.html`.
-
-> Les formulaires "Rejoignez-nous" sont front-end uniquement (message de
-> succes). Pour recevoir les demandes, connectez-les a un service e-mail/backend.
+La route `/admin` necessite un SPA fallback. Les fichiers de config sont
+inclus : `public/_redirects` (Netlify), `vercel.json` (Vercel).
+N'oubliez pas d'ajouter les variables `VITE_SUPABASE_*` dans l'hebergeur.
 
 ## Stack
 
-- React 19 / Vite 8 / Framer Motion 12
+- React 19 / Vite 8 / Framer Motion 12 / Supabase

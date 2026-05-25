@@ -9,10 +9,9 @@ import {
 import {
   translations,
   LANGS,
-  teamMembers,
-  workItems,
   agencyContact,
 } from "./i18n";
+import { fetchTeam, fetchWork } from "./supabase";
 import { Icons } from "./Icons";
 import "./components.css";
 
@@ -23,6 +22,10 @@ const useLang = () => useContext(LangCtx);
 /* ===== Theme context ===== */
 const ThemeCtx = createContext();
 const useTheme = () => useContext(ThemeCtx);
+
+/* ===== Data context (team & work from Supabase) ===== */
+const DataCtx = createContext();
+const useData = () => useContext(DataCtx);
 
 /* ===== Scroll-reveal wrapper ===== */
 function Reveal({ children, delay = 0, y = 40, className = "" }) {
@@ -64,8 +67,8 @@ function Preloader({ onDone }) {
       >
         <defs>
           <linearGradient id="pwave" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6d5797" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="#6d5797" stopOpacity="0" />
+            <stop offset="0%" stopColor="#5fb3da" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#5fb3da" stopOpacity="0" />
           </linearGradient>
         </defs>
         <motion.path
@@ -667,18 +670,255 @@ function Services() {
   );
 }
 
-/* ===== WORK / PORTFOLIO ===== */
+/* ===== WORK / PORTFOLIO — masonry gallery + lightbox ===== */
+
+/* turn a YouTube / Vimeo / direct link into something playable.
+   `preview` = muted autoplay loop (for the gallery tile);
+   otherwise = full playback with sound + controls (lightbox). */
+function parseVideo(url, { preview = false } = {}) {
+  const out = { embedUrl: "", directFile: "" };
+  if (!url) return out;
+  const yt = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/
+  );
+  const vm = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (yt) {
+    const id = yt[1];
+    out.embedUrl = preview
+      ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&controls=0&playlist=${id}&modestbranding=1&playsinline=1`
+      : `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+  } else if (vm) {
+    out.embedUrl = preview
+      ? `https://player.vimeo.com/video/${vm[1]}?autoplay=1&muted=1&loop=1&background=1`
+      : `https://player.vimeo.com/video/${vm[1]}?autoplay=1`;
+  } else if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url)) {
+    out.directFile = url;
+  } else {
+    out.embedUrl = url;
+  }
+  return out;
+}
+
+function WorkTile({ w, lang, index, onOpen }) {
+  // aspect pattern gives the masonry its varied rhythm
+  const aspects = ["tall", "", "wide", "", "", "tall", "wide", ""];
+  const shape = aspects[index % aspects.length];
+  const bg = w.image
+    ? { backgroundImage: `url(${w.image})` }
+    : {
+        background: `linear-gradient(150deg, hsl(${w.hue} 38% 30%), hsl(${
+          w.hue + 26
+        } 44% 15%))`,
+      };
+
+  const isVideo = w.type === "video" && w.video_url;
+  const { embedUrl, directFile } = isVideo
+    ? parseVideo(w.video_url, { preview: true })
+    : {};
+
+  // only play/load the video while the tile is actually on screen —
+  // this keeps scrolling smooth instead of running every video at once
+  const tileRef = useRef(null);
+  const videoRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!isVideo) return;
+    const el = tileRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { rootMargin: "200px", threshold: 0.1 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [isVideo]);
+
+  // play/pause the uploaded video file as it enters/leaves the viewport
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (visible) {
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [visible]);
+
+  return (
+    <motion.button
+      ref={tileRef}
+      layout
+      type="button"
+      className={`work-tile ${shape}`}
+      onClick={() => onOpen(w)}
+      initial={{ opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.94 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {/* poster / fallback always rendered underneath */}
+      <div className="work-tile-bg" style={bg} />
+
+      {/* uploaded video: muted loop, plays only while visible */}
+      {directFile && (
+        <video
+          ref={videoRef}
+          className="work-tile-media"
+          src={visible ? directFile : undefined}
+          poster={w.image || undefined}
+          muted
+          loop
+          playsInline
+          preload="none"
+        />
+      )}
+
+      {/* YouTube/Vimeo embed: heavy iframe is mounted only when visible */}
+      {embedUrl && visible && (
+        <div className="work-tile-media work-tile-embed">
+          <iframe
+            src={embedUrl}
+            title={w.title[lang]}
+            tabIndex={-1}
+            loading="lazy"
+            allow="autoplay; muted; loop"
+            frameBorder="0"
+          />
+        </div>
+      )}
+
+      <div className="work-tile-veil" />
+      {w.type === "video" && (
+        <span className="work-tile-play">
+          <Icons.play style={{ width: 18, height: 18, color: "#fff" }} />
+        </span>
+      )}
+      <div className="work-tile-info">
+        <span className="work-tile-cat">{w.cat[lang]}</span>
+        <span className="work-tile-title">{w.title[lang]}</span>
+      </div>
+    </motion.button>
+  );
+}
+
+function WorkLightbox({ item, lang, onClose, onPrev, onNext }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") onNext();
+      if (e.key === "ArrowLeft") onPrev();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose, onNext, onPrev]);
+
+  const bg = item.image
+    ? { backgroundImage: `url(${item.image})` }
+    : {
+        background: `linear-gradient(150deg, hsl(${item.hue} 38% 32%), hsl(${
+          item.hue + 26
+        } 44% 16%))`,
+      };
+
+  // full playback (sound + controls) in the lightbox
+  const { embedUrl, directFile } = parseVideo(item.video_url || "");
+  const hasVideo = Boolean(embedUrl || directFile);
+
+  return (
+    <motion.div
+      className="work-lb"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <button className="work-lb-close" onClick={onClose} aria-label="Fermer">
+        <Icons.arrow style={{ width: 20, height: 20, transform: "rotate(45deg)" }} />
+      </button>
+      <button
+        className="work-lb-nav prev"
+        onClick={(e) => { e.stopPropagation(); onPrev(); }}
+        aria-label="Précédent"
+      >
+        <Icons.chevron
+          style={{ width: 26, height: 26, transform: "rotate(90deg)" }}
+        />
+      </button>
+      <motion.div
+        className="work-lb-stage"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ scale: 0.92, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.92, y: 20 }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        key={item.id}
+      >
+        {item.type === "video" && directFile ? (
+          <video
+            className="work-lb-media"
+            src={directFile}
+            poster={item.image || undefined}
+            controls
+            autoPlay
+            playsInline
+          />
+        ) : item.type === "video" && embedUrl ? (
+          <div className="work-lb-media work-lb-embed">
+            <iframe
+              src={embedUrl}
+              title={item.title[lang]}
+              allow="autoplay; fullscreen; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : (
+          <div className="work-lb-media" style={bg}>
+            {item.type === "video" && !hasVideo && (
+              <span className="work-lb-play">
+                <Icons.play style={{ width: 30, height: 30, color: "#fff" }} />
+              </span>
+            )}
+          </div>
+        )}
+        <div className="work-lb-meta">
+          <span className="work-lb-cat">{item.cat[lang]}</span>
+          <h3 className="work-lb-title">{item.title[lang]}</h3>
+        </div>
+      </motion.div>
+      <button
+        className="work-lb-nav next"
+        onClick={(e) => { e.stopPropagation(); onNext(); }}
+        aria-label="Suivant"
+      >
+        <Icons.chevron
+          style={{ width: 26, height: 26, transform: "rotate(-90deg)" }}
+        />
+      </button>
+    </motion.div>
+  );
+}
+
 function Work() {
   const { t, lang } = useLang();
+  const { work: workItems } = useData();
   const [filter, setFilter] = useState("all");
+  const [openIdx, setOpenIdx] = useState(-1);
 
   const filtered = workItems.filter(
     (w) => filter === "all" || w.type === filter
   );
-  const spanFor = (idx) => {
-    const pattern = ["big", "", "", "", "wide", "", "", ""];
-    return pattern[idx % pattern.length];
-  };
+
+  const open = (w) => setOpenIdx(filtered.findIndex((x) => x.id === w.id));
+  const close = () => setOpenIdx(-1);
+  const prev = () =>
+    setOpenIdx((i) => (i - 1 + filtered.length) % filtered.length);
+  const next = () => setOpenIdx((i) => (i + 1) % filtered.length);
 
   return (
     <section className="section" id="work" style={{ background: "var(--bg-2)" }}>
@@ -710,68 +950,36 @@ function Work() {
           ))}
         </div>
 
-        <motion.div className="work-grid" layout>
+        <motion.div className="work-masonry" layout>
           <AnimatePresence mode="popLayout">
             {filtered.map((w, i) => (
-              <motion.div
+              <WorkTile
                 key={w.id}
-                layout
-                className={`work-card ${spanFor(i)}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={{ y: -6 }}
-              >
-                <div
-                  className="work-card-bg"
-                  style={
-                    w.image
-                      ? {
-                          backgroundImage: `url(${w.image})`,
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        }
-                      : {
-                          background: `linear-gradient(150deg, hsl(${w.hue} 45% 32%), hsl(${
-                            w.hue + 30
-                          } 50% 16%))`,
-                        }
-                  }
-                />
-                <div className="work-card-shimmer" />
-                <div className="work-type-badge">
-                  {w.type === "video" ? (
-                    <Icons.video
-                      style={{ width: 16, height: 16, color: "#fff" }}
-                    />
-                  ) : (
-                    <Icons.image
-                      style={{ width: 16, height: 16, color: "#fff" }}
-                    />
-                  )}
-                </div>
-                {w.type === "video" && (
-                  <div className="work-play">
-                    <Icons.play
-                      style={{
-                        width: 22,
-                        height: 22,
-                        color: "var(--bg)",
-                        marginInlineStart: 3,
-                      }}
-                    />
-                  </div>
-                )}
-                <div className="work-card-overlay">
-                  <span className="work-cat">{w.cat[lang]}</span>
-                  <h3 className="work-card-title">{w.title[lang]}</h3>
-                </div>
-              </motion.div>
+                w={w}
+                lang={lang}
+                index={i}
+                onOpen={open}
+              />
             ))}
           </AnimatePresence>
         </motion.div>
+
+        {filtered.length === 0 && (
+          <p className="work-empty">{t.work.subtitle}</p>
+        )}
       </div>
+
+      <AnimatePresence>
+        {openIdx >= 0 && filtered[openIdx] && (
+          <WorkLightbox
+            item={filtered[openIdx]}
+            lang={lang}
+            onClose={close}
+            onPrev={prev}
+            onNext={next}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
@@ -807,6 +1015,7 @@ function TeamCard({ m, lang }) {
 
 function Team() {
   const { t, lang } = useLang();
+  const { team: teamMembers } = useData();
   const [paused, setPaused] = useState(false);
   const [overflowing, setOverflowing] = useState(true);
   const viewportRef = useRef(null);
@@ -832,7 +1041,7 @@ function Team() {
       window.removeEventListener("resize", check);
       clearTimeout(t1);
     };
-  }, [lang, overflowing]);
+  }, [lang, overflowing, teamMembers]);
 
   // when overflowing we render the list twice for a seamless loop;
   // when it fits we render it once, centered and static.
@@ -1272,9 +1481,17 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [openCategory, setOpenCategory] = useState(null);
   const [showTop, setShowTop] = useState(false);
+  const [team, setTeam] = useState([]);
+  const [work, setWork] = useState([]);
 
   const t = translations[lang];
   const dir = LANGS[lang].dir;
+
+  // load team & work (from Supabase, or data.json fallback)
+  useEffect(() => {
+    fetchTeam().then(setTeam).catch(() => setTeam([]));
+    fetchWork().then(setWork).catch(() => setWork([]));
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -1285,8 +1502,17 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
-  const toggleTheme = () =>
+  const toggleTheme = () => {
+    // briefly enable a global colour transition so the switch fades
+    // smoothly instead of snapping; the class is removed afterwards
+    const root = document.documentElement;
+    root.classList.add("theme-anim");
+    window.clearTimeout(toggleTheme._t);
+    toggleTheme._t = window.setTimeout(() => {
+      root.classList.remove("theme-anim");
+    }, 650);
     setTheme((th) => (th === "dark" ? "light" : "dark"));
+  };
 
   const scrollToJoin = () => {
     document.querySelector("#join")?.scrollIntoView({ behavior: "smooth" });
@@ -1308,6 +1534,7 @@ export default function App() {
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <ThemeCtx.Provider value={{ theme, toggleTheme }}>
+        <DataCtx.Provider value={{ team, work }}>
         <AnimatePresence>
           {loading && <Preloader onDone={() => setLoading(false)} />}
         </AnimatePresence>
@@ -1352,6 +1579,7 @@ export default function App() {
             </AnimatePresence>
           </motion.div>
         )}
+        </DataCtx.Provider>
       </ThemeCtx.Provider>
     </LangCtx.Provider>
   );
