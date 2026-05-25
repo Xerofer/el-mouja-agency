@@ -11,7 +11,7 @@ import {
   LANGS,
   agencyContact,
 } from "./i18n";
-import { fetchTeam, fetchWork } from "./supabase";
+import { fetchTeam, fetchWork, fetchServices } from "./supabase";
 import { Icons } from "./Icons";
 import "./components.css";
 
@@ -596,21 +596,120 @@ function About() {
 }
 
 /* ===== SERVICES ===== */
-const serviceIcons = [
-  Icons.social,
-  Icons.video,
-  Icons.strategy,
-  Icons.ad,
-  Icons.sponsor,
-  Icons.ugc,
-  Icons.web,
-  Icons.film,
-  Icons.event,
-  Icons.wedding,
-];
+const serviceIconMap = {
+  social: Icons.social, video: Icons.video, strategy: Icons.strategy,
+  ad: Icons.ad, sponsor: Icons.sponsor, ugc: Icons.ugc, web: Icons.web,
+  film: Icons.film, event: Icons.event, wedding: Icons.wedding,
+  spark: Icons.spark,
+};
+
+function ServiceRow({ s, index }) {
+  const { lang } = useLang();
+  const Icon = serviceIconMap[s.icon] || Icons.spark;
+  const flipped = index % 2 === 1;
+
+  // example media: video preview, or image, or a soft gradient placeholder
+  const isVideo = s.media_type === "video" && s.video_url;
+  const { embedUrl, directFile } = isVideo
+    ? parseVideo(s.video_url, { preview: true })
+    : {};
+
+  const rowRef = useRef(null);
+  const videoRef = useRef(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!isVideo) return;
+    const el = rowRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => setVisible(e.isIntersecting),
+      { rootMargin: "200px", threshold: 0.1 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [isVideo]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (visible) {
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+    } else v.pause();
+  }, [visible]);
+
+  return (
+    <motion.div
+      ref={rowRef}
+      className={`service-row ${flipped ? "flip" : ""}`}
+      initial={{ opacity: 0, y: 50 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-80px" }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+    >
+      <div className="service-text">
+        <div className="service-row-top">
+          <span className="service-icon">
+            <Icon />
+          </span>
+          <span className="service-num">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+        </div>
+        <h3 className="service-row-title">{s.title[lang]}</h3>
+        <p className="service-row-desc">{s.desc[lang]}</p>
+      </div>
+
+      <div className="service-media">
+        {directFile ? (
+          <video
+            ref={videoRef}
+            className="service-media-el"
+            src={visible ? directFile : undefined}
+            poster={s.media || undefined}
+            muted
+            loop
+            playsInline
+            preload="none"
+          />
+        ) : embedUrl && visible ? (
+          <div className="service-media-el service-media-embed">
+            <iframe
+              src={embedUrl}
+              title={s.title[lang]}
+              tabIndex={-1}
+              loading="lazy"
+              allow="autoplay; muted; loop"
+              frameBorder="0"
+            />
+          </div>
+        ) : s.media ? (
+          <img
+            className="service-media-el"
+            src={s.media}
+            alt={s.title[lang]}
+            loading="lazy"
+          />
+        ) : (
+          <div className="service-media-el service-media-empty">
+            <Icon />
+          </div>
+        )}
+        {isVideo && (
+          <span className="service-media-badge">
+            <Icons.play style={{ width: 14, height: 14, color: "#fff" }} />
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 function Services() {
   const { t } = useLang();
+  const { services } = useData();
+
   return (
     <section className="section noise" id="services">
       <motion.div
@@ -636,45 +735,16 @@ function Services() {
           </Reveal>
         </div>
 
-        <div className="services-grid">
-          {t.services.list.map((s, i) => {
-            const Icon = serviceIcons[i] || Icons.spark;
-            return (
-              <motion.div
-                key={i}
-                className="service-card glass"
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{
-                  duration: 0.6,
-                  delay: (i % 3) * 0.1,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
-              >
-                <div className="sc-glow" />
-                <div className="service-num">
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <div className="service-icon">
-                  <Icon />
-                </div>
-                <h3 className="service-title">{s.t}</h3>
-                <p className="service-desc">{s.d}</p>
-              </motion.div>
-            );
-          })}
+        <div className="services-list">
+          {services.map((s, i) => (
+            <ServiceRow key={s.id || i} s={s} index={i} />
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-/* ===== WORK / PORTFOLIO — masonry gallery + lightbox ===== */
-
-/* turn a YouTube / Vimeo / direct link into something playable.
-   `preview` = muted autoplay loop (for the gallery tile);
-   otherwise = full playback with sound + controls (lightbox). */
 function parseVideo(url, { preview = false } = {}) {
   const out = { embedUrl: "", directFile: "" };
   if (!url) return out;
@@ -1483,14 +1553,16 @@ export default function App() {
   const [showTop, setShowTop] = useState(false);
   const [team, setTeam] = useState([]);
   const [work, setWork] = useState([]);
+  const [services, setServices] = useState([]);
 
   const t = translations[lang];
   const dir = LANGS[lang].dir;
 
-  // load team & work (from Supabase, or data.json fallback)
+  // load team, work & services (from Supabase, or data.json fallback)
   useEffect(() => {
     fetchTeam().then(setTeam).catch(() => setTeam([]));
     fetchWork().then(setWork).catch(() => setWork([]));
+    fetchServices().then(setServices).catch(() => setServices([]));
   }, []);
 
   useEffect(() => {
@@ -1534,7 +1606,7 @@ export default function App() {
   return (
     <LangCtx.Provider value={{ t, lang, setLang }}>
       <ThemeCtx.Provider value={{ theme, toggleTheme }}>
-        <DataCtx.Provider value={{ team, work }}>
+        <DataCtx.Provider value={{ team, work, services }}>
         <AnimatePresence>
           {loading && <Preloader onDone={() => setLoading(false)} />}
         </AnimatePresence>

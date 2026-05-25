@@ -63,6 +63,30 @@ const workToRow = (w, order) => ({
   sort_order: order,
 });
 
+const rowToService = (r) => ({
+  id: r.id,
+  title: { fr: r.title_fr, en: r.title_en, ar: r.title_ar },
+  desc: { fr: r.desc_fr, en: r.desc_en, ar: r.desc_ar },
+  icon: r.icon || "spark",
+  media_type: r.media_type || "image",
+  media: r.media || "",
+  video_url: r.video_url || "",
+});
+
+const serviceToRow = (s, order) => ({
+  title_fr: s.title.fr,
+  title_en: s.title.en,
+  title_ar: s.title.ar,
+  desc_fr: s.desc.fr,
+  desc_en: s.desc.en,
+  desc_ar: s.desc.ar,
+  icon: s.icon || "spark",
+  media_type: s.media_type || "image",
+  media: s.media || "",
+  video_url: s.video_url || "",
+  sort_order: order,
+});
+
 /* ---- READ (used by the public website) ---- */
 export async function fetchTeam() {
   if (!supabase) return fallback.teamMembers;
@@ -88,6 +112,19 @@ export async function fetchWork() {
     return fallback.workItems;
   }
   return data.map(rowToWork);
+}
+
+export async function fetchServices() {
+  if (!supabase) return fallback.services || [];
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) {
+    console.error("fetchServices:", error.message);
+    return fallback.services || [];
+  }
+  return data.map(rowToService);
 }
 
 /* ---- WRITE (used by the /admin page) ---- */
@@ -116,6 +153,20 @@ export async function saveWork(items) {
   if (items.length) {
     const rows = items.map((w, i) => workToRow(w, i + 1));
     const ins = await supabase.from("work_items").insert(rows);
+    if (ins.error) throw ins.error;
+  }
+}
+
+export async function saveServices(items) {
+  if (!supabase) throw new Error("Supabase non configuré");
+  const del = await supabase
+    .from("services")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  if (del.error) throw del.error;
+  if (items.length) {
+    const rows = items.map((s, i) => serviceToRow(s, i + 1));
+    const ins = await supabase.from("services").insert(rows);
     if (ins.error) throw ins.error;
   }
 }

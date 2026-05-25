@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import {
   fetchTeam,
   fetchWork,
+  fetchServices,
   saveTeam,
   saveWork,
+  saveServices,
   uploadImage,
   isSupabaseConfigured,
 } from "./supabase";
@@ -40,6 +42,21 @@ const emptyWork = () => ({
   cat: { fr: "", en: "", ar: "" },
   hue: 268,
   image: "",
+  video_url: "",
+});
+
+const SERVICE_ICONS = [
+  "social", "video", "strategy", "ad", "sponsor",
+  "ugc", "web", "film", "event", "wedding", "spark",
+];
+
+const emptyService = () => ({
+  id: uid("sv"),
+  title: { fr: "", en: "", ar: "" },
+  desc: { fr: "", en: "", ar: "" },
+  icon: "spark",
+  media_type: "image",
+  media: "",
   video_url: "",
 });
 
@@ -392,6 +409,94 @@ function WorkEditor({ item, onChange, onDelete }) {
   );
 }
 
+/* ---- Service editor ---- */
+function ServiceEditor({ item, onChange, onDelete }) {
+  const set = (patch) => onChange({ ...item, ...patch });
+  const setL = (field, lng, v) =>
+    onChange({ ...item, [field]: { ...item[field], [lng]: v } });
+
+  return (
+    <div className="af-card">
+      <div className="af-card-head">
+        <div className="af-card-title">
+          {item.title.fr || item.title.en || "Nouveau service"}
+        </div>
+        <button className="ab ab-danger" onClick={onDelete} type="button">
+          Supprimer
+        </button>
+      </div>
+
+      <div className="af-grid">
+        <Field label="Icône">
+          <select
+            value={item.icon}
+            onChange={(e) => set({ icon: e.target.value })}
+          >
+            {SERVICE_ICONS.map((ic) => (
+              <option key={ic} value={ic}>
+                {ic}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Type d'exemple">
+          <select
+            value={item.media_type}
+            onChange={(e) => set({ media_type: e.target.value })}
+          >
+            <option value="image">Image</option>
+            <option value="video">Vidéo</option>
+          </select>
+        </Field>
+      </div>
+
+      <div className="af-grid af-grid-3">
+        {LANGS.map((l) => (
+          <Field key={l.key} label={`Titre (${l.label})`}>
+            <input
+              value={item.title[l.key]}
+              dir={l.key === "ar" ? "rtl" : "ltr"}
+              onChange={(e) => setL("title", l.key, e.target.value)}
+              placeholder={l.key === "ar" ? "العنوان" : "Title"}
+            />
+          </Field>
+        ))}
+      </div>
+
+      <div className="af-grid af-grid-3">
+        {LANGS.map((l) => (
+          <Field key={l.key} label={`Description (${l.label})`}>
+            <input
+              value={item.desc[l.key]}
+              dir={l.key === "ar" ? "rtl" : "ltr"}
+              onChange={(e) => setL("desc", l.key, e.target.value)}
+              placeholder={l.key === "ar" ? "الوصف" : "Description"}
+            />
+          </Field>
+        ))}
+      </div>
+
+      <ImagePicker
+        label={
+          item.media_type === "video"
+            ? "Image de couverture de l'exemple (miniature)"
+            : "Image exemple de ce service"
+        }
+        value={item.media}
+        onChange={(v) => set({ media: v })}
+      />
+
+      {item.media_type === "video" && (
+        <VideoPicker
+          label="Vidéo exemple de ce service"
+          value={item.video_url}
+          onChange={(v) => set({ video_url: v })}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ============================================================
    ADMIN ROOT
    ============================================================ */
@@ -399,6 +504,7 @@ export default function Admin() {
   const [tab, setTab] = useState("team");
   const [team, setTeam] = useState([]);
   const [work, setWork] = useState([]);
+  const [services, setServices] = useState([]);
   const [dirty, setDirty] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -408,10 +514,11 @@ export default function Admin() {
     document.documentElement.setAttribute("data-theme", "dark");
     document.documentElement.dir = "ltr";
     document.title = "El Mouja — Gestion du contenu";
-    Promise.all([fetchTeam(), fetchWork()])
-      .then(([tm, wk]) => {
+    Promise.all([fetchTeam(), fetchWork(), fetchServices()])
+      .then(([tm, wk, sv]) => {
         setTeam(tm);
         setWork(wk);
+        setServices(sv);
       })
       .catch(() => setToast("Erreur de chargement des données"))
       .finally(() => setLoadingData(false));
@@ -474,6 +581,31 @@ export default function Admin() {
     markDirty();
   };
 
+  /* service ops */
+  const updateService = (i, sv) => {
+    setServices((arr) => arr.map((x, idx) => (idx === i ? sv : x)));
+    markDirty();
+  };
+  const addService = () => {
+    setServices((arr) => [...arr, emptyService()]);
+    markDirty();
+  };
+  const deleteService = (i) => {
+    if (!confirm("Supprimer ce service ?")) return;
+    setServices((arr) => arr.filter((_, idx) => idx !== i));
+    markDirty();
+  };
+  const moveService = (i, dir) => {
+    setServices((arr) => {
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return arr;
+      const copy = [...arr];
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+      return copy;
+    });
+    markDirty();
+  };
+
   /* publish — save everything to Supabase */
   const publish = async () => {
     if (!isSupabaseConfigured) {
@@ -484,6 +616,7 @@ export default function Admin() {
     try {
       await saveTeam(team);
       await saveWork(work);
+      await saveServices(services);
       setDirty(false);
       showToast("✓ Publié — le site est à jour");
     } catch (e) {
@@ -523,7 +656,7 @@ export default function Admin() {
       <div className="admin-body">
         <div className="admin-note">
           <strong>Comment ça marche :</strong> ajoutez ou modifiez les
-          membres et réalisations ci-dessous, puis cliquez sur{" "}
+          membres, réalisations et services ci-dessous, puis cliquez sur{" "}
           <em>Publier les changements</em>. Le contenu est enregistré sur
           la base de données et apparaît immédiatement sur le site —
           aucune reconstruction nécessaire.
@@ -541,6 +674,12 @@ export default function Admin() {
             onClick={() => setTab("work")}
           >
             Réalisations <span className="admin-count">{work.length}</span>
+          </button>
+          <button
+            className={`admin-tab ${tab === "services" ? "active" : ""}`}
+            onClick={() => setTab("services")}
+          >
+            Services <span className="admin-count">{services.length}</span>
           </button>
         </div>
 
@@ -610,6 +749,41 @@ export default function Admin() {
             ))}
             <button className="ab ab-add" onClick={addWork}>
               + Ajouter une réalisation
+            </button>
+          </div>
+        )}
+
+        {tab === "services" && (
+          <div className="admin-section">
+            {services.map((sv, i) => (
+              <div key={sv.id} className="af-row">
+                <div className="af-order">
+                  <button
+                    type="button"
+                    onClick={() => moveService(i, -1)}
+                    disabled={i === 0}
+                    aria-label="Monter"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveService(i, 1)}
+                    disabled={i === services.length - 1}
+                    aria-label="Descendre"
+                  >
+                    ▼
+                  </button>
+                </div>
+                <ServiceEditor
+                  item={sv}
+                  onChange={(x) => updateService(i, x)}
+                  onDelete={() => deleteService(i)}
+                />
+              </div>
+            ))}
+            <button className="ab ab-add" onClick={addService}>
+              + Ajouter un service
             </button>
           </div>
         )}

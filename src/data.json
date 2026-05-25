@@ -196,5 +196,177 @@
       "hue": 300,
       "image": ""
     }
+  ],
+  "services": [
+    {
+      "id": "sv-1",
+      "title": {
+        "fr": "Gestion des réseaux sociaux",
+        "en": "Social Media Management",
+        "ar": "إدارة الشبكات الاجتماعية"
+      },
+      "desc": {
+        "fr": "Stratégie, design et création de contenu engageant.",
+        "en": "Strategy, design and engaging content creation.",
+        "ar": "استراتيجية وتصميم وإنشاء محتوى جذاب."
+      },
+      "icon": "social",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-2",
+      "title": {
+        "fr": "Production vidéo",
+        "en": "Video Production",
+        "ar": "إنتاج الفيديو"
+      },
+      "desc": {
+        "fr": "Écriture de script, voix off, tournage et montage professionnel.",
+        "en": "Scriptwriting, voice-over, filming and professional editing.",
+        "ar": "كتابة السيناريو والتعليق الصوتي والتصوير والمونتاج الاحترافي."
+      },
+      "icon": "video",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-3",
+      "title": {
+        "fr": "Stratégie marketing",
+        "en": "Marketing Strategy",
+        "ar": "استراتيجية التسويق"
+      },
+      "desc": {
+        "fr": "Un plan d'action personnalisé pour développer votre marque.",
+        "en": "A tailored action plan to grow your brand.",
+        "ar": "خطة عمل مخصصة لتنمية علامتك التجارية."
+      },
+      "icon": "strategy",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-4",
+      "title": {
+        "fr": "Publicité",
+        "en": "Advertising",
+        "ar": "الإعلان"
+      },
+      "desc": {
+        "fr": "Campagnes publicitaires ciblées sur toutes les plateformes.",
+        "en": "Targeted ad campaigns across all platforms.",
+        "ar": "حملات إعلانية موجهة على جميع المنصات."
+      },
+      "icon": "ad",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-5",
+      "title": {
+        "fr": "Sponsors & partenariats",
+        "en": "Sponsors & Partnerships",
+        "ar": "الرعاة والشراكات"
+      },
+      "desc": {
+        "fr": "Vous relier aux sponsors et partenaires qui boostent la croissance.",
+        "en": "Connecting you with sponsors and partners that drive growth.",
+        "ar": "ربطك بالرعاة والشركاء الذين يعززون النمو."
+      },
+      "icon": "sponsor",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-6",
+      "title": {
+        "fr": "Contenu UGC",
+        "en": "UGC Content",
+        "ar": "محتوى UGC"
+      },
+      "desc": {
+        "fr": "Contenu authentique créé pour votre marque.",
+        "en": "Authentic content created for your brand.",
+        "ar": "محتوى أصلي تم إنشاؤه لعلامتك التجارية."
+      },
+      "icon": "ugc",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-7",
+      "title": {
+        "fr": "Sites web & applications",
+        "en": "Websites & Apps",
+        "ar": "مواقع وتطبيقات"
+      },
+      "desc": {
+        "fr": "Sites web et applications mobiles modernes et rapides.",
+        "en": "Modern, fast websites and mobile apps.",
+        "ar": "مواقع وتطبيقات جوال حديثة وسريعة."
+      },
+      "icon": "web",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-8",
+      "title": {
+        "fr": "Réalisation de films",
+        "en": "Film Making",
+        "ar": "صناعة الأفلام"
+      },
+      "desc": {
+        "fr": "Courts-métrages et publicités de qualité cinématographique.",
+        "en": "Short films and ads of cinematic quality.",
+        "ar": "أفلام قصيرة وإعلانات بجودة سينمائية."
+      },
+      "icon": "film",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-9",
+      "title": {
+        "fr": "Organisation d'événements",
+        "en": "Event Organization",
+        "ar": "تنظيم الفعاليات"
+      },
+      "desc": {
+        "fr": "Planification et organisation d'événements inoubliables.",
+        "en": "Planning and organizing unforgettable events.",
+        "ar": "تخطيط وتنظيم فعاليات لا تُنسى."
+      },
+      "icon": "event",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    },
+    {
+      "id": "sv-10",
+      "title": {
+        "fr": "Mariages & soutenances",
+        "en": "Weddings & Defenses",
+        "ar": "حفلات الزفاف والمناقشات"
+      },
+      "desc": {
+        "fr": "Couverture et organisation de mariages et de soutenances.",
+        "en": "Coverage and organization of weddings and thesis defenses.",
+        "ar": "تغطية وتنظيم حفلات الزفاف ومناقشات التخرج."
+      },
+      "icon": "wedding",
+      "media_type": "image",
+      "media": "",
+      "video_url": ""
+    }
   ]
 }
